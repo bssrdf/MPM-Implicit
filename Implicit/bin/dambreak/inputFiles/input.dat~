@@ -1,0 +1,17 @@
+# input file names 
+inputMeshFileName             dambreak/inputFiles/mesh.dat                                                                                                  
+inputSubMeshFileName          dambreak/inputFiles/submesh.dat                                                                                               
+constraintsFileName           dambreak/inputFiles/mesh_constraints.dat                                                                                      
+inputSoilParticleFileName     dambreak/inputFiles/soilParticles.dat                                                                                         
+initStressSoilPFileName       dambreak/inputFiles/initStressSoilP.dat                                                                                       
+tractionsSoilPFileName        dambreak/inputFiles/Traction.dat                                                                                              
+materialFileName              dambreak/inputFiles/material.dat
+particleMaterialFileName      dambreak/inputFiles/particleMaterial.dat
+                                                                                             
+# other parameters 
+gravityFlag                   1         
+boundaryFrictionMiu           0.0     
+soilParticleSpacing           0.01           
+timeInterval                  0.01     
+numberOfSteps                 10
+numberOfSubStepsOS            1

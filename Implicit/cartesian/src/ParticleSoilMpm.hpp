@@ -1,0 +1,262 @@
+// *********************************************************************************
+// File: ParticleSoilMpm.hpp
+//
+// Details: Base class for soil particles
+//
+// Dependency: MPM_ITEMS contains all template parameters
+//
+// Author: Krishna Kumar and Samila Bandara, University of Cambridge
+//
+// Version: 1.0
+// *********************************************************************************
+
+#ifndef CARTESIAN_SRC_PARTICLESOILMPM_H_
+#define CARTESIAN_SRC_PARTICLESOILMPM_H_
+
+#include <cassert>
+#include <set>
+#include <iostream>
+#include <iomanip>
+#include <limits>
+#include <utility>
+#include <vector>
+
+#include <boost/array.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+
+#include "cartesian/src/MpmItems.hpp"
+#include "cartesian/src/ParticleMpm.hpp"
+#include "cartesian/src/CompareFunctor.hpp"
+#include "cartesian/src/Enums.hpp"
+
+namespace mpm {
+template<typename MPM_ITEMS>
+class ParticleSoilMpm;
+namespace ublas = boost::numeric::ublas;
+}
+
+
+// \brief class for soil particles
+// \details Includes basic calculations for particles
+// \tparam MPM_ITEMS   the main template file which includes all the classes
+
+template<typename MPM_ITEMS>
+class mpm::ParticleSoilMpm : public mpm::ParticleMpm<MPM_ITEMS > {
+public:
+
+    typedef MPM_ITEMS MpmItems;
+    static const unsigned dof = MpmItems::dof;
+    static const unsigned dim = MpmItems::dim;
+    static const unsigned numNodes = MpmItems::nNodes;
+    static const unsigned nComponents = (dim * (dim + 1)) / 2;  // 3 for 2D, 6 for 3D
+
+    static const mpm::ParticleTypeTag myType  = mpm::SOIL;
+
+    typedef typename MpmItems::NodeHandle NodeType;
+    typedef typename MpmItems::ElementHandle ElementType;
+    typedef typename MpmItems::ParticleHandle ParticleType;
+
+    typedef typename MpmItems::MaterialHandle MaterialType;
+
+    typedef typename MpmItems::NodePtr NodePtr;
+    typedef typename MpmItems::ElementPtr ElementPtr;
+    typedef typename MpmItems::ParticlePtr ParticlePtr;
+    typedef typename MpmItems::ParticleCloudSoilPtr ParticleCloudSoilPtr;
+    typedef typename MpmItems::MaterialPtr MaterialPtr;
+
+    typedef ublas::bounded_vector<double, dof> VecDof;
+    typedef ublas::bounded_vector<double, dim> VecDim;
+    typedef ublas::bounded_vector<double, numNodes> VecNN;
+    typedef ublas::bounded_vector<double, nComponents> VecNComp;
+    typedef ublas::bounded_vector<double, 6> Vec6x1;
+    // typedef ublas::bounded_matrix<double, dim, numNodes> MatDimNV;
+    typedef ublas::bounded_matrix<double, numNodes, dim> MatNNDim;
+    typedef ublas::bounded_matrix<double, dim, dim> MatDimDim;
+
+    typedef ublas::bounded_matrix<unsigned, 2, 2> Mat2x2;
+    typedef ublas::bounded_matrix<unsigned, 3, 3> Mat3x3;
+    typedef ublas::bounded_matrix<double, nComponents, dim> MatNCompDim;
+    typedef ublas::bounded_vector<MatNCompDim, numNodes> VecNNMat;
+    typedef ublas::bounded_vector<VecDof, numNodes > VecNNVec;
+
+protected:
+    typedef std::vector<ElementPtr> ElementVec_;
+    typedef std::vector<NodePtr> NodeVec_;
+    // typedef mpm::CompareFunctor<ElementPtr> ElementCompare;
+    // typedef std::set<ElementPtr, ElementCompare> ElementSet;
+
+public:
+    // Constructor with id number
+    ParticleSoilMpm(const unsigned& id) : ParticleType(id) {
+        velocity_.clear();
+        strain_.clear();
+        stress_.clear();
+        tractionBn_.clear();
+    }
+
+    // Constructor with id and coordinates
+    ParticleSoilMpm(const unsigned& id, const VecDim& cv) : ParticleType(id, cv) {}
+
+    // ~ParticleMpm () { dofIndices_.clear();  particleForces_.clear(); } // ???
+
+private:
+    typedef std::vector<std::pair<unsigned, double>> TractionVec_;
+
+    // typedef std::vector<std::pair<unsigned,double>> ParticleForceVec_;
+    // typedef boost::array<unsigned, dof> IndexArray_;
+
+
+public:
+    // check values
+    void printCheckParticle() {
+        std::cout << id_ << ", m = " << mass_ << ", den = " << density_ << "\n";
+    }
+
+    // cache material to particle and initialise material properties of particle
+    void cacheMaterial(std::vector<MaterialPtr> materialPtrs, const std::vector<double> pSpacing);
+
+    // set initial stress of particle using an input file
+    void setInitialStress(const Vec6x1 iStress) {
+        stress_ = iStress;
+        pressure_ = -(iStress(0)+iStress(1)+iStress(2))/3;
+    }
+
+    // Calculate mass of particle
+    double massParticle() {
+        return mass_;
+    }
+
+    // Assign mass to relevant nodes (to obtain nodal mass)
+    void assignMassToNodes();
+
+    // Assign velocity to relevant nodes (to obtain nodal mass)
+    void assignMomentumToNodes();
+
+    // Compute strains
+    void computeStrain(const double dt);
+
+    // Compute stresses
+    void computeStress(ParticleCloudSoilPtr pCloudSoilPtr);
+
+    // Store traction pressures
+    void storeTraction(unsigned direction, double tractionPressure);
+
+    // Update phase averaged density of soil
+    void updateSoilDensity();
+
+//------------------------------------------------------------------------------
+    // Assign body force (gravity) to relevant nodes (external force)
+    void assignBodyForceToNodes(const VecDim G);
+
+    void assignPressureToNodes();
+
+    // Assign traction force to relevant nodes (external force)
+    void assignTractionsToNodes(const std::vector<double> pSpacing);
+//------------------------------------------------------------------------------
+
+    // Compute internal forces for relevant nodes using stress
+    void computeInternalForceAtNodes();
+
+    // Update velocity and position
+    void updateSoilParticle(const double dt);
+
+    // write soil particle co-ordinates data into an output file
+    void writeParticleData(std::ostream& out);
+
+    // write soil particle velocity data into an output file
+    void writeParticleVelocityVTK(std::ostream& out);
+
+    // write soil particle stress data into an output file
+    void writeParticleStressVTK(std::ostream& out);
+
+    // write soil particle strain data into an output file
+    void writeParticleStrainVTK(std::ostream& out);
+
+    // write soil particle strain data into an output file
+    void writeParticleRateOfStrainI2VTK(std::ostream& out);
+
+
+    // Return values for output
+    // Get stress at soil particle
+    Vec6x1 getStressSoilParticle() const {
+        return stress_;
+    }
+
+    // Get strain at soil particle
+    Vec6x1 getStrainSoilParticle() const {
+        return strain_;
+    }
+
+    // Get velocity of soil particle
+    VecDof getVelocitySoilParticle() const {
+        return velocity_;
+    }
+
+    // Get StrainRateI2 of the soil particle
+    double getStrainRateI2SoilParticle() const {
+        return RateOfStrainI2_;
+    }
+
+    // Get StrainRate of the soil particle
+    MatDimDim getStrainRateSoilParticle() const {
+        return strainRate_;
+    }
+
+    // Set StrainRateI2 of the soil particle
+    void setStrainRateI2SoilParticle(double strainRateI2) {
+        RateOfStrainI2_ = strainRateI2;
+    }
+
+    // void computeStiffness(const VecDim& xi); // THIS SHOULD BE IN DERIVED CLASS
+    // calculate B matrix
+    void computeBMatrix_();
+
+    // calculate B matrix
+    void computeBBarMatrix_();
+
+    // calculate B matrix at the center of the element
+    void computeBMatrixCenter_();
+
+    // compute the volumetric strain increament at the center of the element:
+    void computeStrainBBar(const double dt);
+
+    // compute the volumetric strain increament at the center of the element:
+    void computeVolStrainIncCenter(const double dt);
+
+protected:
+    // calculate mass of particle (constant value)
+    void computeMass_(const std::vector<double> pSpacing);
+
+protected:
+    using ParticleType::id_;               // identifiying particle number
+    using ParticleType::matID_;            // MaterialID of the particle
+    using ParticleType::coord_;            // coordinates
+    using ParticleType::sfunc_;            // shape functions
+    using ParticleType::dsfuncDX_;         // gradient shape function
+    using ParticleType::ePtrOfP_;          // pointer to the element which has particle
+    using ParticleType::nodesOfParticle_;  // nodes of element in which particle is in
+    using ParticleType::dsfuncDXCenter_;   // gradient shape function at the center of the element
+    double mass_;                          // mass of particle (constant)
+    double density_;                       // phase averaged density of soil (=(1-n)density)
+    double porosity_;                      // porosity of particle
+    double phi_;                           // friction angle of soil (initial stress calc)
+    // double dVolStrainCenter_;           // Volumetric strain at the center of the element
+    MaterialPtr material_;
+    double pressure_;                 // Pointer to material object
+    VecDof velocity_;                      // velocity
+    Vec6x1 strain_;                        // strain
+    Vec6x1 dStrain_;                       // change of strain in a time step
+    Vec6x1 dStrainCenter_;                 // change of strain in element center in a time step
+    Vec6x1 dStrainBBar_;                   // change of strain computed using BBar technique
+    Vec6x1 stress_;                        // stress
+    VecNNMat B_;                           // strain matrix (B matrix) for all nodes
+    VecNNMat BCenter_;                     // strain matrix (B matrix) at the center of the element
+    VecNNMat BBar_;                        // strain matrix (BBar Method with \=B (Bar) is based on selective reduced integration at the center of the element.
+    TractionVec_ tractionBn_;              // traction with direction
+    double RateOfStrainI2_;                // Shear Rate of the particle
+    MatDimDim strainRate_;
+};
+
+#include "ParticleSoilMpm.ipp"
+
+#endif  // CARTESIAN_SRC_PARTICLESOILMPM_H_

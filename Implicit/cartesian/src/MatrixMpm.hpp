@@ -1,0 +1,186 @@
+// All Matrix handling
+//
+// Dependency: MPM_ITEMS contains all template parameters
+//
+// Author: Shyamini Kularathna, University of Cambridge
+//
+// Version: 1.0
+// *********************************************************************************
+
+#ifndef CARTESIAN_SRC_MATRIXMPM_H_
+#define CARTESIAN_SRC_MATRIXMPM_H_
+
+#include <vector>
+#include <string>
+#include <iostream>
+#include <algorithm>
+
+#include <boost/array.hpp>
+#include <boost/bind.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+
+#include "cartesian/src/MpmItems.hpp"
+#include "cartesian/src/Enums.hpp"
+
+#include <Eigen/Dense>
+
+namespace mpm {
+template<typename MPM_ITEMS>
+class MatrixMpm;
+}
+
+template<typename MPM_ITEMS>
+class mpm::MatrixMpm {
+public:
+    typedef MPM_ITEMS  MpmItems;
+
+    static const unsigned dim = MpmItems::dim;
+    static const unsigned numNodes = MpmItems::nNodes;
+    static const unsigned dof = MpmItems::dof;
+
+    typedef typename MpmItems::NodeHandle NodeType;
+    typedef typename MpmItems::ElementHandle ElementType;
+    typedef typename MpmItems::ParticleHandle  ParticleType;
+    // typedef typename MpmItems::ParticleSoilHandle ParticleSoilType;
+    // typedef typename MpmItems::ParticleWaterHandle ParticleWaterType;
+    typedef typename MpmItems::ParticleCloudSoilHandle ParticleCloudSoilType;
+
+    typedef typename MpmItems::NodePtr NodePtr;
+    typedef typename MpmItems::ElementPtr ElementPtr;
+    typedef typename MpmItems::ParticlePtr ParticlePtr;
+    typedef typename MpmItems::ParticleSoilPtr ParticleSoilPtr;
+    // typedef typename MpmItems::ParticleWaterPtr ParticleWaterPtr;
+    typedef typename MpmItems::ParticleCloudSoilPtr ParticleCloudSoilPtr;
+
+    typedef Eigen::VectorXd VectorD;
+    typedef Eigen::MatrixXd MatrixD;
+    typedef boost::numeric::ublas::bounded_vector<double, dof> VecDof;
+
+protected:
+    typedef std::vector<ElementPtr> ElementVec_;
+    typedef std::vector<NodePtr> NodeVec_;
+
+
+
+
+//-----------------------------------------------------------------------------
+public:
+// constructor
+    MatrixMpm() {
+        columnMatrix.clear();
+        rowMatrix.clear();
+    }
+
+//------------------------------------------------------------------------------
+                  // initialise all the containers
+    void initialise();
+
+//------------------------------------------------------------------------------
+            // vector of column positions of non-zero matrix elements
+
+    void nonZeroColumnPositions(unsigned& columnId) {
+        columnMatrix.push_back(columnId);
+    }
+
+    void nonZeroRowPositions(unsigned& rowId) {
+        rowMatrix.push_back(rowId);
+    }
+
+    void printnonZeroColumnPositions() {
+        for (unsigned i = 0; i < columnMatrix.size(); ++i) 
+            std::cout << columnMatrix.at(i) << " ";
+    }
+
+//******************************************************************************
+//------------------------------------------------------------------------------
+                  // set nonzero entries of matrices
+
+    // resize the vectors according to the number of nonzero entries
+    void resizeMatrix(unsigned& size); 
+
+//------------------------------------------------------------------------------
+
+    void setNonZeroMEntries(double& entry, unsigned& position) {
+        M_(position) = entry;
+    }
+
+//------------------------------------------------------------------------------
+
+    void printKmatrix () {
+        std::cout << "size of K_yy: " << K_yy.size() << std::endl;
+        std::cout << K_yy << std::endl;
+    }
+
+    void printMmatrix () {
+        std::cout << "size of M_: " << M_.size() << std::endl;
+        std::cout << M_ << std::endl;
+    }
+
+//------------------------------------------------------------------------------
+
+    void setNonZeroKEntries(double& Kxx, double& Kyy, double& Kxy, unsigned& position_) {
+        K_xx(position_) = Kxx;
+        K_yy(position_) = Kyy;
+        K_xy(position_) = Kxy;
+    }
+
+//------------------------------------------------------------------------------
+
+    void setNonZeroFEntries(VecDof& F, unsigned& position) {
+        force_x(position) = F(0);
+        force_y(position) = F(1);
+    }
+
+    void printFmatrix() {
+        std::cout << "size of F_x: " << force_x.size() << std::endl;
+        std::cout << "size of F_y: " << force_y.size() << std::endl;
+        std::cout << "force_x: " << force_x << std::endl;
+        std::cout << "force_y: " << force_y << std::endl;
+    }
+
+//------------------------------------------------------------------------------
+                        // Solve the matrix
+
+    bool solveLinearMatrixSystem(NodeVec_& activeNodes);
+
+//------------------------------------------------------------------------------
+//******************************************************************************
+                       // Iterative Solver
+
+// Find the residual (r = b - Av)
+    void findResidual(unsigned& numNodes);
+
+// return the product of matrix and vector velocity (Av)
+    void productMatrixVector(unsigned& rowId, MatrixD& vector);
+
+// CG iterative solver
+    bool CGIterativeSolver(unsigned& activeNodes, NodeVec_ ptrActiveNodes);
+
+// Find the norm of a vector
+    double findNorm(VectorD& vector);
+
+    bool checkErrorTolerance();
+
+//******************************************************************************
+
+protected:
+    std::vector<unsigned> columnMatrix;  // column positions of nonzero elements
+    std::vector<unsigned> rowMatrix;     // 
+    VectorD M_;                          // non-zero elements of mass matrix
+    VectorD K_xx, K_yy, K_zz;
+    VectorD K_xy, K_xz, K_yz;
+
+    VectorD force_x, force_y, force_z;   // non-zero elements of force vector
+
+// parameters for iterative solvers
+    MatrixD velocity_;             // vector of unknown velocity
+    VectorD residual;               // residual (r = b - Av)
+    VecDof AxU;                     // product of matrix vector at single nodes
+    VectorD P_;                     // parameter in CG iterative method
+    double Rho_;                    // parameter in CG iterative method
+
+};
+
+#include "MatrixMpm.ipp"
+
+#endif // CARTESIAN_SRC_MATRIXMPM_H_

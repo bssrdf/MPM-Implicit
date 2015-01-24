@@ -1,0 +1,49 @@
+# vtk DataFile Version 2.0
+test grain
+ASCII
+DATASET UNSTRUCTURED_GRID
+POINTS 10 float
+0.4 0.4 0.
+0.8 0.4 0.
+0.4 0.8 0.
+0.8 0.8 0.
+0.4 1.2 0.
+0.8 1.2 0.
+0.4 1.6 0.
+0.8 1.6 0.
+0.4 2.2 0.
+0.8 2.2 0.
+CELLS 10 20
+1 0
+1 1
+1 2
+1 3
+1 4
+1 5
+1 6
+1 7
+1 8
+1 9
+CELL_TYPES 10
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+1 
+POINT_DATA 10
+VECTORS Velocity float
+0 0 0.
+0 0 0.
+0 0 0.
+0 0 0.
+0 0 0.
+0 0 0.
+0 0 0.
+0 0 0.
+0 0 0.
+0 0 0.

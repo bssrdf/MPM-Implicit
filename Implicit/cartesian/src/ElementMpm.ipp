@@ -1,0 +1,105 @@
+// *********************************************************************************
+// File: ElementMpm.ipp
+//
+// Details: Calculate coordinates of center of element to evaluate local coordinates
+//          of particle.
+//          \param[out] ctrECoord  coordinates of center of element
+//          \param[out] L          lengths of element (+/-)
+//
+// Author: Samila Bandara, University of Cambridge
+//
+// Version / Revision: 1.0 (2010)
+// *********************************************************************************
+
+#include <algorithm>
+#include "corlib/misc.hpp"
+
+// Calculate coordinates of center of element to evaluate local coordinates
+//  of particle.
+//  \param[out] ctrECoord  coordinates of center of element
+//  \param[out] L          lengths of element (+/-)
+
+//------------------------------------------------------------------------------
+                  // compute the element center and length
+
+template<typename MPM_ITEMS>
+void mpm::ElementMpm<MPM_ITEMS>::computeCtrCoordAndLength() {
+
+    VecDim nCoord;
+    ctrECoord_.clear();
+
+    for (unsigned i = 0; i < numNodes; i++) {
+        nCoord = nodes_[i] -> giveCoordinates();
+        ctrECoord_ += nCoord;
+    }
+
+    unsigned nN = numNodes;  // Make DEBUG gives error when used numNodes directly!
+    ctrECoord_ /= nN;
+    nCoord = nodes_[0] -> giveCoordinates();
+    VecDim nCoordEnd = nodes_[numNodes - 2] -> giveCoordinates();
+
+    for (unsigned i = 0; i < dim - 1; i++)
+        eLength_(i) = fabs(nCoordEnd(i) - nCoord(i));
+
+    VecDim nCoordVer = nodes_[3] -> giveCoordinates();
+    eLength_(dim - 1) = fabs(nCoordVer(dim - 1) - nCoord(dim - 1));  // y/z length
+    // to account height of element when includes in a sloping mesh as well.
+
+    return;
+}
+
+//------------------------------------------------------------------------------
+                   // Give the location of the given node in the element
+
+template<typename MPM_ITEMS>
+unsigned mpm::ElementMpm<MPM_ITEMS>::giveNodeLocation(NodePtr ptrNode) {
+
+    unsigned nodeId = ptrNode->giveId();
+    for (unsigned i = 0; i < nodes_.size(); ++i) {
+        if (nodeId == nodes_.at(i)->giveId()) {
+            return i;
+            break;
+        }
+    }
+}
+
+//------------------------------------------------------------------------------
+
+template<typename MPM_ITEMS>
+bool mpm::ElementMpm<MPM_ITEMS>::isNodeIncluded(NodePtr ptrNode) {
+
+    bool status;
+    status = 0;
+    unsigned nodeID = ptrNode->giveId();
+    for (unsigned i = 0; i < nodes_.size(); ++i) {
+        if (nodeID == nodes_.at(i)->giveId()){
+            status = 1;
+            break;
+        }
+    }
+    return status;
+}
+
+//------------------------------------------------------------------------------
+// Set node pointer given a pointer to a node and the index for its position
+// \param[in] index Number of the node' position
+// \param[in] node  Pointer to node which will be the new node
+//
+
+// template<typename MPM_ITEMS>
+// void mpm::ElementMpm<MPM_ITEMS>::stiffnessIntegrand() {
+//     if (particlesInElement_.size()>0) {
+//       for (unsigned i = 0; i < particlesInElement_.size(); i++) {
+//         unsigned pId = particlesInElement_[i] -> giveParticleId();
+//         // std::cout << "particle id = "<< pId << std::endl;
+//         //VecDim xi ; particlesInElement_[i] -> localCoordinates(xi);
+//         //particlesInElement_[i] -> computeStiffness (xi);
+//         MatDimNV dphiDX  = particlesInElement_[i] -> giveParicleGlobalDerivatives();
+//         std::cout << "particle id = "<< pId << ", dphiDX(0,3) = "<< dphiDX(0,3) << std::endl;
+//         //particlesInElement_[i] -> computeStiffness ();write like this
+//       }
+//     }
+//     return;
+// }
+
+

@@ -1,0 +1,95 @@
+// for MPM Implicit solution purpose
+//
+// Dependency: MPM_ITEMS contains all template parameters
+//
+// Author: Shyamini Kularathna, University of Cambridge
+//
+// Version: 1.0
+// *********************************************************************************
+
+#ifndef CARTESIAN_SRC_SOLVERMPM_H_
+#define CARTESIAN_SRC_SOLVERMPM_H_
+
+#include <vector>
+#include <string>
+#include <iostream>
+#include <algorithm>
+#include <boost/bind.hpp>
+
+#include "cartesian/src/MpmItems.hpp"
+#include "cartesian/src/Enums.hpp"
+
+#include <Eigen/Dense>
+
+namespace mpm {
+template<typename MPM_ITEMS>
+class SolverMpm;
+}
+
+template<typename MPM_ITEMS>
+class mpm::SolverMpm : public mpm::MeshMpm<MPM_ITEMS> {
+public:
+    typedef MPM_ITEMS  MpmItems;
+
+    static const unsigned dim = MpmItems::dim;
+    static const unsigned numNodes = MpmItems::nNodes;
+    static const unsigned dof = MpmItems::dof;
+
+    typedef typename MpmItems::MeshHandle MeshType;
+    typedef typename MpmItems::NodeHandle NodeType;
+    typedef typename MpmItems::ElementHandle ElementType;
+    typedef typename MpmItems::ParticleHandle  ParticleType;
+    typedef typename MpmItems::ParticleCloudSoilHandle ParticleCloudSoilType;
+    typedef typename MpmItems::MatrixHandle MatrixType;
+
+    typedef typename MpmItems::NodePtr NodePtr;
+    typedef typename MpmItems::ElementPtr ElementPtr;
+    typedef typename MpmItems::ParticlePtr ParticlePtr;
+    typedef typename MpmItems::ParticleSoilPtr ParticleSoilPtr;
+    typedef typename MpmItems::ParticleCloudSoilPtr ParticleCloudSoilPtr;
+    typedef typename MpmItems::MatrixPtr MatrixPtr;
+
+protected:
+    typedef std::vector<ElementPtr> ElementVec_;
+    typedef std::vector<NodePtr> NodeVec_;
+    typedef std::vector<MatrixPtr> MatrixVec_;
+
+
+public:
+//-----------------------------------------------------------------------------
+        // default constructor which allocates new memory for matrix handling
+
+    SolverMpm() {
+
+        MatrixPtr theMatrix = new MatrixType;
+        matrixSet.push_back(theMatrix);
+    }
+
+//-----------------------------------------------------------------------------
+        // destructor which frees all dynamically allocated memory
+    ~SolverMpm() {
+
+    }
+//-----------------------------------------------------------------------------
+
+// initialise all the containers
+    void initialise();
+
+// vector of column positions of non-zero matrix elements
+    void nonZeroColumnPositions(unsigned columnId) {
+        columnMatrix.push_back(columnId);
+    }
+
+
+//-----------------------------------------------------------------------------
+protected:
+    using MeshType::nodesOfSoilPSet_;
+    using MeshType::elementsOfSoilPSet_;
+
+    MatrixVec_ matrixSet;
+
+};
+
+#include "SolverMpm.ipp"
+
+#endif // CARTESIAN_SRC_SOLVERMPM_H_

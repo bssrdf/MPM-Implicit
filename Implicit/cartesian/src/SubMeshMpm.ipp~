@@ -1,0 +1,170 @@
+// *********************************************************************************
+// File: SubMeshMpm.ipp
+//
+// Details: Implementation of base class for submesh
+//
+// Dependency: MPM_ITEMS contains all template parameters
+//
+// Author: Samila Bandara, University of Cambridge
+//
+// Version: 1.0
+// *********************************************************************************
+
+#include <cmath>
+
+#include <boost/tuple/tuple.hpp>
+
+
+// Constructor given a stream to a simple mesh file. This file must have the
+// following format: \n
+//   For 2D:      \n
+//     NSubMeshes \n
+//     e0_1   e1_1   e2_1   e3_1   meshType_1 \n
+//     e0_2   e1_2   e2_2   e3_2   meshType_2 \n
+//     .... \n
+//   For 3D:      \n
+//     NSubMeshes \n
+//     e0_1   e1_1   e2_1   e3_1   e4_1   e5_1   e6_1   e7_1   meshType_1 \n
+//     e0_2   e1_2   e2_2   e3_2   e4_2   e5_2   e6_2   e7_2   meshType_2 \n
+//     .... \n
+// \image html submeshInput.jpg
+// NSubMeshes is the total number of submeshes. meshType = 0-rectangular, 1- slope mesh.
+// ei_j represents the element number of ith location of jth submesh. (Refer the image)
+// \param subms Input stream
+
+
+template<typename MPM_ITEMS>
+std::istream & mpm::SubMeshMpm<MPM_ITEMS>::readSubMesh(std::istream & subms) {
+    VecNN eIdVec;
+
+    for (unsigned i = 0; i < numNodes; i++) {
+        subms >> eIdVec(i);
+    }
+    subms >> meshType_;
+
+    ElementPtr eStartPtr = myMeshPtr_->giveElement(eIdVec(0));
+    ElementPtr eEndPtr = myMeshPtr_->giveElement(eIdVec(numNodes - 1));
+    NodePtr nFirstESPtr = eStartPtr->giveNodePtr(0);
+    NodePtr nLastEEPtr = eEndPtr->giveNodePtr(numNodes - 2);
+    nFirstESCoord_ = nFirstESPtr->giveCoordinates();
+    nLastEECoord_ = nLastEEPtr->giveCoordinates();
+    elemIdStart_ = eIdVec(0);
+
+    dxElem_ = eStartPtr->giveLengthsOfElement();
+
+    if (dim == 2) {
+        numElem_(0) = eIdVec(1) - eIdVec(0) + 1;
+        numElem_(1) = (eIdVec(numNodes - 1) + 1 - eIdVec(0)) / numElem_(0);
+    }
+    else if (dim == 3) {
+        numElem_(0) = eIdVec(1) - eIdVec(0) + 1;
+        numElem_(1) = (eIdVec(3) + 1 - eIdVec(0)) / numElem_(0);
+        numElem_(2) = (eIdVec(numNodes - 1) + 1 - eIdVec(0)) / (numElem_(0) * numElem_(1));
+    }
+
+    if (meshType_ == 1) {
+        ElementPtr eSecondPtr = myMeshPtr_->giveElement(eIdVec(1));
+        NodePtr nFirstE2Ptr = eSecondPtr->giveNodePtr(0);
+        VecDim nFirstE2Coord = nFirstE2Ptr->giveCoordinates();
+        VecDim L = nFirstE2Coord - nFirstESCoord_;
+        FSI_VERIFY(L(0));
+        slopeAngle_ = atan(L(2) / L(0));
+    }
+
+    return subms;
+}
+
+
+// Check whether the particle is inside the submesh. This doesn't check limits
+// on vertical (y/z in 2D/3D) direction due the use of sloped sub meshes
+// \param[in]  pPtr    pointer to a particle
+// \param[out] status  gives '1' if particle is inside else gives '0'
+
+template<typename MPM_ITEMS>
+bool mpm::SubMeshMpm<MPM_ITEMS>::isParticleIncluded(ParticlePtr pPtr) {
+    bool status = 0;
+    unsigned statusDim = 0;
+
+    VecDim coordVec = pPtr->giveParticleCoordinates();
+
+    for (unsigned i = 0; i < (dim - 1); i++) {
+        if ((nFirstESCoord_(i) <= coordVec(i)) && (coordVec(i) < nLastEECoord_(i)))
+            statusDim += 1;
+    }
+    if (statusDim == dim - 1)
+        status = 1;
+
+    return status;
+}
+
+
+// Set particle and element pointers to required classes.
+// Find the element id of the element where the particle is located and
+// set pointers.
+// \param[in]  pPtr    pointer to a particle
+// \param[out] status  gives '1' if particle is inside else gives '0'
+
+template<typename MPM_ITEMS>
+void mpm::SubMeshMpm<MPM_ITEMS>::setParticle(ParticlePtr pPtr) {
+    unsigned elementId;
+    ublas::bounded_vector<unsigned, dim> pGridNum;
+
+    VecDim coordVec = pPtr->giveParticleCoordinates();
+
+    for (unsigned i = 0; i < dim; i++)
+        pGridNum(i) = floor((coordVec(i) - nFirstESCoord_(i)) / dxElem_(i));
+
+    if (meshType_ == 1) {
+        double relZ = (coordVec(0) - nFirstESCoord_(0)) * tan(slopeAngle_) / dxElem_(dim - 1);
+        // only y/z direction has the effect
+        pGridNum(dim - 1) = floor(coordVec(dim - 1) - nFirstESCoord_(dim - 1) - relZ);
+        pPtr->addMeshTypeAndSlope(meshType_, slopeAngle_);
+    }
+
+    if (dim == 2)
+        elementId = elemIdStart_ + (numElem_(0) * pGridNum(1)) + pGridNum(0);
+
+    if (dim == 3)
+        elementId = elemIdStart_ + (numElem_(0) * numElem_(1)) * pGridNum(2)
+                    + (numElem_(0) * pGridNum(1)) + pGridNum(0);
+
+    ElementPtr ePtr = myMeshPtr_->giveElement(elementId);
+    NodeVec_ nVec = ePtr->giveNodes();
+    pPtr->addElementAndNodes(ePtr, nVec);
+    ePtr->addParticle(pPtr);
+    myMeshPtr_->addElementAndNodesOfSoilParticle(ePtr, nVec);
+
+    return;
+}
+
+
+// add particle (soil/water) to corresponding sub-mesh.
+// add particle (soil/water) to element.
+// add element to particle (soil/water).
+// check what is the particle type and use the corresponding vectors (SOIL/WATER)
+
+template<typename MPM_ITEMS>
+bool mpm::SubMeshMpm<MPM_ITEMS>::addParticleToSubMesh(ParticlePtr pPtr) {
+    bool status = 0;
+    if (this->isParticleIncluded(pPtr)) {
+        this->setParticle(pPtr);
+        status = 1;
+    }
+
+    return status;
+}
+
+
+// Free all dynamically allocated memory
+//
+// template<typename MPM_ITEMS>
+// mpm::SubMeshMpm<MPM_ITEMS>::~SubMeshMpm()
+// {
+//     this->iterateOverElements(corlib::deleteFunctor());
+//     elements_.clear();
+//     this->iterateOverNodes(corlib::deleteFunctor());
+//     nodes_.clear();
+//
+//     return;
+// }
+

@@ -1,0 +1,15 @@
+Current Version: 0.1.1 See ChangeLog for features
+
+Features Implemented: 
+
+Version 0.1.1:
+	- Autotools Implementation 100%
+	- Specify Current Working Directory and Results 95%
+
+New Features:
+	- XML Based Input
+	- Testing Bingham Fluid and NorSand
+	- Revisiting Documentation and Doxygen
+	- VTK XML Based Output scheme
+	- Revisiting Autotools
+	

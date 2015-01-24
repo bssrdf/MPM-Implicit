@@ -1,0 +1,16 @@
+Modified_Bingham {
+      	youngModulus 1e+07
+      	poissonRatio 0.499
+ 	density 1000	
+	tau0 244.0
+	mu 200.0
+	M 1000
+}
+Bingham {
+      	youngModulus 1e+07
+      	poissonRatio 0.499
+ 	density 1000	
+	tau0 0.0
+	mu 0.001
+	strainCutoff 0.2
+}

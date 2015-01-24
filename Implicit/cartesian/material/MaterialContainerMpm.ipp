@@ -1,0 +1,96 @@
+// *********************************************************************************
+// File: MaterialContainerMpm.hpp
+//
+// Details: Implementation of container class for Materials
+//
+// Author: Kosala Bandara, University of Cambridge
+//
+// Version: 1.0 - 2010
+// *********************************************************************************
+
+#include <algorithm>
+#include <functional>
+#include <iostream>
+#include <string>
+#include <typeinfo>
+
+#include <cartesian/material/MaterialContainerMpm.hpp>
+#include <cartesian/material/MaterialBaseMpm.hpp>
+#include <cartesian/material/MaterialFactoryMpm.hpp>
+#include <cartesian/material/Newtonian/Newtonian.hpp>
+#include <cartesian/material/Modified_Bingham/Modified_Bingham.hpp>
+
+
+#include <corlib/misc.hpp>
+#include <corlib/PropertiesParser.hpp>
+
+
+using namespace mpm::material;
+
+
+// static pointer to itself
+MaterialContainerMpm* MaterialContainerMpm::instance_ = NULL;
+
+
+// create an instance
+MaterialContainerMpm* MaterialContainerMpm::instance() {
+    if (!instance_) {
+        instance_ = new MaterialContainerMpm();
+
+        // register the createMaterial functions with the MaterialFactory
+        MaterialFactoryMpm * mf = MaterialFactoryMpm::instance();
+        mf->registerMaterial("Newtonian", Newtonian::createMaterial);
+        mf->registerMaterial("Modified_Bingham", Modified_Bingham::createMaterial);
+    }
+
+    return instance_;
+}
+
+
+// delete all materials in the container
+void MaterialContainerMpm::destroy() {
+    std::for_each(materials_.begin(), materials_.end(), corlib::deleteFunctor());
+    materials_.clear();
+
+    MaterialFactoryMpm* mf = MaterialFactoryMpm::instance();
+    mf -> destroy();
+    delete instance_;
+}
+
+
+// read materials from input stream
+void MaterialContainerMpm::readMaterialStream(std::istream& is) {
+
+    MaterialFactoryMpm* mf = MaterialFactoryMpm::instance();
+
+    while (is.good()) {
+        corlib::skip_comment(is);
+        std::string materialType;
+        is >> materialType;
+
+        MaterialBaseMpm * newmat = mf -> createMaterial(materialType);
+
+        newmat -> readMaterialParams(is);
+        materials_.push_back(newmat);
+        corlib::skip_comment(is);
+    }
+
+    return;
+}
+
+
+// print materials to output stream
+void MaterialContainerMpm::printMaterialStream(std::ostream& os) {
+    MaterialIt_ it  = materials_.begin();
+    MaterialIt_ ite = materials_.end();
+
+    assert(it != ite);
+
+    while (it != ite) {
+        os << typeid((*it)).name() << "\n";
+        (*it)->printMaterialParams(os);
+        ++it;
+    }
+
+    return;
+}

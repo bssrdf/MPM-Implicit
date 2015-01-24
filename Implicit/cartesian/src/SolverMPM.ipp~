@@ -1,0 +1,25 @@
+//-----------------------------------------------------------------------------
+                   // free all dynamically allocate memory
+
+template<typename MPM_ITEMS>
+mpm::SolverMpm<MPM_ITEMS>::~SolverMpm() {
+
+    for (MatrixIterator iterM = matrixSet_.begin(); iterM != matrixSet_,end(); ++iterM) {
+        delete *iterM;
+    }
+    matrixSet_.clear();
+}
+
+//-----------------------------------------------------------------------------
+                          // Matrix computation
+
+template<typename MPM_ITEMS>
+void mpm::SolverMpm<MPM_ITEMS>::evaluateMatrix() {
+
+    NodeVec_ nodesOfP_;
+
+    for (NodeSetIterator_ iterN = nodesOfSoilPSet_.begin(); iterN != nodesOfSoilPSet_.end(); ++iterN) {
+        NodePtr ptrNode = *iterN;
+        nodesOfP_.push_back(ptrNode);
+    }
+}

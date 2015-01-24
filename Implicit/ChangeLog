@@ -1,0 +1,20 @@
+Version 0.1.3
+	- Bingham Fluid Model updated Stability condition
+	- Printout Strain and Shear Rate
+
+Version 0.1.2
+	- Bingham Fluid Model
+	- BBar Selective Reduced Integration Technique
+	- Slump Cone 2D input files
+
+Version 0.1.1
+	- Revisited Autotools - 100% complete
+	- Specify Working Directory and using Stringstreams - 100% complete
+
+Version 0.1.0
+	- MPM 2D/3D Code
+	- Template based C++ STL 2011
+	- Cartesian / Rectilinear grid & Slope modelling
+	- Material Models: Linear Elastic, Mohr-Coulomb (2D/3D), Cam-Clay
+	- Autotools 
+	- Visualisation using Paraview with *.vtk output

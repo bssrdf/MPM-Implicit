@@ -1,0 +1,38 @@
+# Notes on the code:
+	- main file and MPM Source files are in cartesian/src.
+	- Example input files can be found in bin
+	- Material files are included in cartesian/material  (Isotropic linear elastic, Mohr-Coulomb, CamClay, Bingham fluid model)
+	- Code is written for 2D / 3D. 
+	- If you do any changes in the source files don't change the original source files. Include the additional things in derived classes.
+	- Corlib template files are a property of Dr. Fehmi Cirak. Therefore please make sure that you do not give this code to anyone without the permission from Dr. Fehmi Cirak and Prof. Kenichi Soga.
+	- You need 'boost' library. This code is currently configured to run on *nix systems. But you can refer the documentation to get an idea of it.
+
+Feel free to contact me at kks32@cam.ac.uk if you need any assistance with the code. 
+
+# Prerequisites:
+
+* You need BOOST Libraries installed on your machine, to install Boost in Fedora: type 'yum install boost-devel.x86_64' in the terminal without quotes
+
+* TCLAP (http://tclap.sourceforge.net/)[http://tclap.sourceforge.net/]
+
+* Corlib FE Template Library by Fehmi Cirak 
+
+# Installation Instructions if you already have a configure file: (detailed installation instructions see Install)
+
+1. Run ./configure --with-corlib=/path_to/corlib --with-tclap=/path/to/tclap on the terminal
+2. make 
+
+# If you don't have a configure file or would like to regenerate the configure files:
+0. Remove aclocal.m4, autom4te.cache and configure files (if present)
+1. Run 'aclocal -I m4/' on the terminal
+2. Run 'autoconf' on the terminal
+3. Run 'automake' on the terminal to generate the configure 
+
+# Cleaning Make and Target files
+1. type "make clean" on terminal without quotes to remove the executable 
+2. type "make distclean" on terminal without quotes to remove objects, executable(s) and configuration files
+
+#If you have modified/removed/added new *.hpp or *.ipp files: (To generate a configure file)
+1. Add the *.hpp or *.ipp to Makefile.am in the Code\ directory
+2. Run 'aclocal -I m4', 'autoconf' and 'automake' to generate the configure script.
+3. Follow the Installation Instructions, when you have a configure file

@@ -1,0 +1,126 @@
+// for MPM Implicit solution purpose
+//
+// Dependency: MPM_ITEMS contains all template parameters
+//
+// Author: Shyamini Kularathna, University of Cambridge (2015)
+//
+// Version: 1.0
+// *********************************************************************************
+
+#ifndef CARTESIAN_SRC_SOLVERMPM_H_
+#define CARTESIAN_SRC_SOLVERMPM_H_
+
+#include <vector>
+#include <string>
+#include <iostream>
+#include <algorithm>
+#include <boost/bind.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+
+#include "cartesian/src/MpmItems.hpp"
+#include "cartesian/src/Enums.hpp"
+
+#include <Eigen/Dense>
+
+namespace mpm {
+template<typename MPM_ITEMS>
+class SolverMpm;
+}
+
+template<typename MPM_ITEMS>
+class mpm::SolverMpm {
+public:
+    typedef MPM_ITEMS  MpmItems;
+
+    static const unsigned dim = MpmItems::dim;
+    static const unsigned numNodes = MpmItems::nNodes;
+    static const unsigned dof = MpmItems::dof;
+
+    typedef typename MpmItems::MeshHandle MeshType;
+    typedef typename MpmItems::NodeHandle NodeType;
+    typedef typename MpmItems::ElementHandle ElementType;
+    typedef typename MpmItems::ParticleHandle  ParticleType;
+    typedef typename MpmItems::ParticleCloudSoilHandle ParticleCloudSoilType;
+    typedef typename MpmItems::MatrixHandle MatrixType;
+
+    typedef typename MpmItems::MeshPtr MeshPtr;
+    typedef typename MpmItems::NodePtr NodePtr;
+    typedef typename MpmItems::ElementPtr ElementPtr;
+    typedef typename MpmItems::ParticlePtr ParticlePtr;
+    typedef typename MpmItems::ParticleSoilPtr ParticleSoilPtr;
+    typedef typename MpmItems::ParticleCloudSoilPtr ParticleCloudSoilPtr;
+    typedef typename MpmItems::MatrixPtr MatrixPtr;
+
+    typedef mpm::CompareFunctor<ElementPtr> ElementCompare;
+    typedef std::set<ElementPtr, ElementCompare> ElementSet;
+    typedef mpm::CompareFunctor<NodePtr> NodeCompare;
+    typedef std::set<NodePtr, NodeCompare> NodeSet;
+
+    typedef boost::numeric::ublas::bounded_vector<double, dof> VecDof;
+
+protected:
+    typedef std::vector<ElementPtr> ElementVec_;
+    typedef std::vector<NodePtr> NodeVec_;
+    typedef std::vector<ParticleSoilPtr> ParticleSoilVec_;
+    typedef std::vector<MatrixPtr> MatrixVec_;
+
+    typedef typename MatrixVec_::iterator MatrixIterator;
+
+    typedef typename ElementSet::iterator ElementSetIterator_;
+    typedef typename NodeSet::iterator NodeSetIterator_;
+
+public:
+//-----------------------------------------------------------------------------
+        // default constructor which allocates new memory for matrix handling
+
+    SolverMpm() {
+
+        theMatrix = new MatrixType;
+        // matrixSet_.push_back(theMatrix);
+    }
+
+//-----------------------------------------------------------------------------
+        // destructor which frees all dynamically allocated memory
+
+    ~SolverMpm();
+//-----------------------------------------------------------------------------
+                     // initialise all the containers
+
+    void initialise();
+
+//------------------------------------------------------------------------------
+                           // evaluate the matrix
+
+    void evaluateMatrix(MeshPtr& mesh, double& dt);
+
+    void setPtrsToNodesAndElementsOfP(MeshPtr ptrMesh);
+
+    void evaluateNonZeroEntries(NodePtr rowId, unsigned row);
+
+    void computeNonZeroM_Entries(NodePtr rowId, unsigned& n);
+
+    void computeNonZeroK_Entries(NodePtr rowId_, unsigned& n_, double dt_);
+
+    void computeNonZeroF_Entries(NodePtr row, double dt, unsigned position);
+//------------------------------------------------------------------------------
+                 // compute and update the nodal velocities
+
+    bool computeNodalVelocity() {
+    bool convergence = theMatrix->solveLinearMatrixSystem(nodesOfParticles_);
+    return convergence;
+    }
+
+//------------------------------------------------------------------------------
+protected:
+
+    NodeVec_ nodesOfParticles_;
+    ElementVec_ elementsOfParticles_;
+
+    MatrixPtr theMatrix;
+    // MatrixVec_ matrixSet_;
+
+};
+
+#include "SolverMpm.ipp"
+
+#endif // CARTESIAN_SRC_SOLVERMPM_H_

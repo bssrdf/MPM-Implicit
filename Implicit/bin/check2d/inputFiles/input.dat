@@ -1,0 +1,17 @@
+# input file names 
+inputMeshFileName             check2d/inputFiles/mesh.dat                                                                                                  
+inputSubMeshFileName          check2d/inputFiles/submesh.dat                                                                                               
+constraintsFileName           check2d/inputFiles/mesh_constraints.dat                                                                                      
+inputSoilParticleFileName     check2d/inputFiles/soilParticles.dat                                                                                         
+initStressSoilPFileName       check2d/inputFiles/initStressSoilP.dat                                                                                       
+tractionsSoilPFileName        check2d/inputFiles/Traction.dat                                                                                              
+materialFileName              check2d/inputFiles/material.dat
+particleMaterialFileName      check2d/inputFiles/particleMaterial.dat
+                                                                                             
+# other parameters 
+gravityFlag                   1         
+boundaryFrictionMiu           0.0     
+soilParticleSpacing           0.4           
+timeInterval                  1     
+numberOfSteps                 1
+numberOfSubStepsOS            1
